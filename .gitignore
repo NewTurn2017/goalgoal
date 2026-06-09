@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# User-generated goal output (don't commit personal goals created while testing in-repo)
+/goal.json
+*.local.json
+
+# Editor / tooling
+.vscode/
+.idea/
+__pycache__/
+*.pyc

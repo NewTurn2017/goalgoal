@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "goalgoal Loop Goal (REFERENCE ONLY)",
+  "description": "참조용 스키마. 런타임 검증의 단일 진실 원천은 scripts/validate_goal.py 다. JSON Schema는 측정가능성·done≠stop·goal_command 턴바운드 같은 교차/정규식 규칙을 표현하지 못하므로, 이 파일은 문서·IDE 힌트·선택적 2차 검사용으로만 쓴다.",
+  "type": "object",
+  "required": [
+    "goal_command",
+    "goal",
+    "domain",
+    "scale",
+    "success_criteria",
+    "done_definition",
+    "verification_method",
+    "risk_tier",
+    "loop_config",
+    "confidence",
+    "status"
+  ],
+  "properties": {
+    "goal_command": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "/goal에 그대로 넣는 산문 완료조건 (≤4000자, 턴바운드·demonstrable 체크 포함)"
+    },
+    "goal": { "type": "string", "minLength": 1 },
+    "context": { "type": "string" },
+    "domain": {
+      "type": "string",
+      "enum": ["code", "data", "infra", "automation", "creative", "analysis"]
+    },
+    "scale": { "type": "string", "enum": ["spike", "mvp", "production"] },
+    "success_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "done_definition": { "type": "string", "minLength": 1 },
+    "verification_method": { "type": "string", "minLength": 1 },
+    "risk_tier": { "type": "string", "enum": ["none", "low", "elevated"] },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "permissions_needed": { "type": "array", "items": { "type": "string" } },
+        "destructive_ops": { "type": "array", "items": { "type": "string" } },
+        "approval_gate": { "type": "string" },
+        "privacy_notes": { "type": "string" }
+      }
+    },
+    "constraints": { "type": "array", "items": { "type": "string" } },
+    "out_of_scope": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "loop_config": {
+      "type": "object",
+      "required": ["max_iterations", "stop_condition"],
+      "properties": {
+        "max_iterations": { "type": "integer", "minimum": 1 },
+        "stop_condition": { "type": "string", "minLength": 1 },
+        "checkpoint": { "type": "string" }
+      }
+    },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+    "status": { "type": "string", "enum": ["ready", "needs_review"] },
+    "open_questions": { "type": "array", "items": { "type": "string" } },
+    "freetext_note": { "type": "string" }
+  },
+  "if": {
+    "properties": { "risk_tier": { "const": "elevated" } }
+  },
+  "then": {
+    "required": ["safety"],
+    "properties": {
+      "safety": {
+        "required": ["permissions_needed", "destructive_ops", "approval_gate", "privacy_notes"]
+      }
+    }
+  }
+}
