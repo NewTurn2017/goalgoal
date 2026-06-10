@@ -56,8 +56,9 @@ Next:
 
       목표 잡아줘 — <your one-line idea>
 
-  goalgoal will interview you, write goal.json, and hand off with:
+  goalgoal will interview you, write goal.json, and hand off a
+  ready-to-paste completion condition:
 
-      /goal @goal.json
+      /goal <goal_command>
 
 USAGE
