@@ -1,0 +1,46 @@
+{
+  "skill_name": "goalgoal",
+  "notes": "산출물 goal.json은 scripts/validate_goal.py(SSOT)로 채점한다. 인터뷰가 필요한 케이스는 어서션이 '인터뷰를 시작했는가 / ready로 새지 않았는가'를 본다.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "vague-shopping-mall",
+      "prompt": "쇼핑몰 만들어줘",
+      "expected_output": "한 줄이 4축(목표·성공기준·종료조건·범위) 모두 모호하므로 인터뷰를 시작해야 한다. 추정으로 도메인=code, 결과물=웹/앱을 잡되 성공기준·종료조건은 반드시 묻는다. 사용자 입력 없이 곧장 status:ready인 goal.json을 내보내면 실패.",
+      "files": [],
+      "assertions": [
+        {"text": "곧바로 ready goal.json을 만들지 않고 인터뷰(AskUserQuestion)를 시작한다", "kind": "behavioral"},
+        {"text": "성공기준·종료조건을 추정으로 때우지 않고 사용자에게 묻는다", "kind": "behavioral"},
+        {"text": "만약 goal.json을 생성했다면 validate_goal.py에서 needs_review이거나, 사용자 답변이 충분할 때만 ready", "kind": "validator"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "already-sharp-cli",
+      "prompt": "Python으로 디렉토리 내 모든 .log 파일을 7일 단위로 gzip 압축하고 30일 지난 건 삭제하는 CLI를 만들고 싶어. 성공 기준은 pytest가 100% 통과하고, 샘플 디렉토리에서 압축/삭제된 파일 수가 출력에 찍히는 것. 최대 15번 반복 안에 끝나면 좋겠어.",
+      "expected_output": "4축이 거의 또렷하다. 추정 확인 한 번으로 끝내거나 최소 질문만 던지고, done_definition≠stop_condition으로 분리된 ready goal.json을 만든다. 파일 삭제가 있으므로 risk_tier=elevated + safety가 채워져야 한다.",
+      "files": [],
+      "assertions": [
+        {"text": "질문이 최소화된다(추정 확인 위주, 추출 질문 남발 금지)", "kind": "behavioral"},
+        {"text": "산출 goal.json이 validate_goal.py를 pass(종료코드 0)로 통과한다", "kind": "validator"},
+        {"text": "done_definition과 loop_config.stop_condition이 서로 다르다", "kind": "validator"},
+        {"text": "파일 삭제가 있으므로 risk_tier=elevated이고 safety 4키가 모두 채워진다", "kind": "validator"},
+        {"text": "goal_command에 턴바운드(예: 15턴 후 멈춘다)가 포함된다", "kind": "validator"},
+        {"text": "success_criteria의 각 항목이 강신호(숫자·통과/실패·exit 0)를 포함한다", "kind": "validator"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "elevated-desktop-cleanup",
+      "prompt": "내 맥 바탕화면이랑 다운로드 폴더가 너무 지저분해. 파일들 종류별로 자동 정리되게 해줘.",
+      "expected_output": "파일 이동/시스템 접근이 있으므로 risk_tier=elevated로 분류하고 승인 게이트가 포함된 safety 블록을 만든다. '정리됨' 같은 모호한 성공기준을 demonstrable(예: 정리 후 바탕화면 파일 수가 N 이하로 출력)로 바꿔 묻는다.",
+      "files": [],
+      "assertions": [
+        {"text": "risk_tier=elevated로 분류하고 safety 블록(권한·파괴적작업·승인게이트·프라이버시)을 채운다", "kind": "validator"},
+        {"text": "'정리됨/깔끔' 같은 모호 기준을 거부하고 출력으로 증명되는 기준으로 유도한다", "kind": "behavioral"},
+        {"text": "산출 goal.json이 validate_goal.py를 pass로 통과하거나, 모호성이 남으면 needs_review로 정직하게 막는다", "kind": "validator"},
+        {"text": "approval_gate에 '사용자 승인 후에만 이동/삭제' 취지가 들어간다", "kind": "validator"}
+      ]
+    }
+  ]
+}

@@ -33,24 +33,41 @@ RISK_TIERS = {"none", "low", "elevated"}
 SAFETY_KEYS = ["permissions_needed", "destructive_ops", "approval_gate", "privacy_notes"]
 GOAL_COMMAND_MAX = 4000
 
-# 관찰 가능 신호(양성 규칙). 숫자·단위·통과실패·이진검증 동사 포함.
-OBSERVABLE = re.compile(
-    r"(\d|%|퍼센트|초\b|분\b|시간|회\b|ms|통과|실패|동작|작동|실행|표시|노출|응답|"
-    r"이상|이하|미만|초과|개\b|건\b|pass|fail|exit\s*0|2\d\d\b|status|<|>|=|✅|❌)",
+# 강(强) 신호: 정량·이진판정·명령결과. 이것만 있으면 측정가능으로 통과.
+STRONG = re.compile(
+    r"(\d|%|퍼센트|초\b|분\b|시간|회\b|ms|통과|실패|"
+    r"이상|이하|미만|초과|개\b|건\b|pass|fail|exit\s*0|2\d\d\b|status\b|<|>|=|✅|❌)",
     re.IGNORECASE,
 )
-# 측정 불가(모호) 표현 — 에러 메시지 보조용. 게이트는 OBSERVABLE 부재로 결정.
+# 약(弱) 신호: 이진 동작 동사. 정량 신호와 함께면 OK, 단독이면 약함,
+# 모호어와 함께 오면("잘 동작한다") ERROR로 승격된다.
+WEAK = re.compile(r"(동작|작동|실행|표시|노출|응답|렌더|출력)", re.IGNORECASE)
+# 하위호환 union: done/stop의 '신호 유무' 체크에 쓴다.
+OBSERVABLE = re.compile(STRONG.pattern + "|" + WEAK.pattern, re.IGNORECASE)
+# 측정 불가(모호) 표현. 약신호와 같이 오면 게이트를 error로 올린다.
 VAGUE = [
     "좋은", "좋게", "좋아", "적당", "어느 정도", "어느정도", "멋진", "멋지", "깔끔",
     "편한", "편하", "편해", "편리", "충분", "대충", "원활", "괜찮", "안정적", "유연",
-    "사용성", "만족", "보기 좋", "느낌",
+    "사용성", "만족", "보기 좋", "느낌", "정상적", "잘 동작", "잘 작동", "잘 돼", "잘 되",
+    "제대로",
     "nice", "good", "fast", "better", "clean", "easy", "robust", "scalable", "smooth",
+    "properly", "works well",
 ]
-# /goal 턴/시간 바운드 신호 (무한루프 안전장치)
+# /goal 턴/시간 바운드 신호 (무한루프 안전장치 — 하드).
+# 주의: "N회 연속(실패)"은 턴 바운드가 아니라 실패중단 문구다(FAILURE_STOP).
+# 총 반복/시간 상한만 턴 바운드로 인정한다.
 TURN_BOUND = re.compile(
     r"(stop\s+after|after\s+\d+\s+turns?|\d+\s*turns?|\d+\s*턴|"
-    r"\d+\s*회\s*(반복|이내|초과|연속|후)|반복\s*\d+|max[_\s]*iterations?|"
+    r"\d+\s*회\s*(반복|이내|초과)|반복\s*\d+|max[_\s]*iterations?|"
     r"\d+\s*분\s*(후|이내|경과))",
+    re.IGNORECASE,
+)
+# 실패 시 중단/사람 대기 문구 (반복 자해 방지 — 권장, 없으면 경고)
+FAILURE_STOP = re.compile(
+    r"(연속\s*\d+\s*회?\s*(실패|fail)|\d+\s*회?\s*연속\s*(실패|fail)|"
+    r"실패(가|하면|시|할 때).{0,12}(멈|중단|대기|사람|기다|보류)|"
+    r"(사람|human).{0,12}(결정|대기|기다|개입|판단)|"
+    r"stop.{0,20}fail|wait\s+for\s+(a\s+)?human)",
     re.IGNORECASE,
 )
 # demonstrable 위반 안티패턴 (평가자가 대화로 확인 불가) — 경고
@@ -119,18 +136,34 @@ def check(goal_path, strict=False):
     if isinstance(done, str) and re.search(r"(완성되면|끝나면|다 되면|done|finished)\s*$", done.strip()):
         warnings.append(f"done_definition이 자기참조적/모호: {done!r}")
 
-    # --- 2) 측정가능성 (양성 규칙: 신호 없으면 ERROR) ---
+    # --- 2) 측정가능성 (양성 규칙: 강신호 우선, 약신호+모호어는 ERROR) ---
     sc = data.get("success_criteria")
     if isinstance(sc, list):
         for item in sc:
             text = str(item)
             if not text.strip():
                 continue
-            if not OBSERVABLE.search(text):
-                hits = vague_hits(text)
-                hint = f" (모호어: {hits})" if hits else ""
-                errors.append(f"[success_criteria] 관찰 가능 신호(숫자/통과·실패/동작·표시) 없음{hint}: {text!r}")
-                flags.append({"field": "success_criteria", "text": text, "vague": hits})
+            has_strong = bool(STRONG.search(text))
+            has_weak = bool(WEAK.search(text))
+            hits = vague_hits(text)
+            if has_strong:
+                # 정량/이진 신호 있음 → 통과. 모호어가 섞였으면 경고만.
+                if hits:
+                    warnings.append(f"[success_criteria] 정량 신호는 있으나 모호어 {hits} 혼재 — 표현 정리 권장: {text!r}")
+                continue
+            if has_weak:
+                if hits:
+                    # "잘 동작한다" 류: 동작/표시 + 모호어 → 증명 불가, ERROR
+                    errors.append(f"[success_criteria] 모호어 {hits} + 동작/표시만으로는 증명 불가 — 숫자·통과/실패·횟수 기준을 넣으세요: {text!r}")
+                    flags.append({"field": "success_criteria", "text": text, "vague": hits})
+                else:
+                    # 동작/표시 단독: 관찰은 되나 정량 약함 → 경고(정량화 권장)
+                    warnings.append(f"[success_criteria] 동작/표시 동사만 있고 정량 신호 없음 — 가능하면 숫자·기준 추가: {text!r}")
+                continue
+            # 신호 전무 → ERROR
+            hint = f" (모호어: {hits})" if hits else ""
+            errors.append(f"[success_criteria] 관찰 가능 신호(숫자/통과·실패/동작·표시) 없음{hint}: {text!r}")
+            flags.append({"field": "success_criteria", "text": text, "vague": hits})
     # done/stop도 모호어+신호부재면 경고
     for field, text in [("done_definition", done), ("stop_condition", stop)]:
         if isinstance(text, str) and text.strip() and not OBSERVABLE.search(text):
@@ -145,6 +178,8 @@ def check(goal_path, strict=False):
             errors.append(f"goal_command가 {GOAL_COMMAND_MAX}자 초과 (현재 {len(gc)}자) — /goal 한도 위반")
         if not TURN_BOUND.search(gc):
             errors.append("goal_command에 턴/시간 바운드 없음 — 무한루프 방지 문구 필수 (예: 'or stop after 20 turns', '20턴 후 멈춘다')")
+        if not FAILURE_STOP.search(gc):
+            warnings.append("goal_command에 실패 시 중단/사람 대기 문구 없음 — 권장: '검증이 3회 연속 실패하면 멈추고 사람의 결정을 기다린다' (반복 자해 방지)")
         nd = [p for p in NON_DEMONSTRABLE if p.lower() in gc.lower()]
         if nd:
             warnings.append(f"goal_command에 대화로 증명 불가한 표현 {nd} — 평가자(Haiku)는 도구·파일을 못 봄. 출력으로 증명되는 체크로 바꾸세요")

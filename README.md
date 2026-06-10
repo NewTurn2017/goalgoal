@@ -37,17 +37,17 @@ ls -l ~/.claude/skills/goalgoal/SKILL.md   # 파일이 보이면 성공
 그러면 goalgoal이:
 
 1. 아이디어의 **명확도를 스코어링**하고 도메인·위험도를 분류합니다.
-2. 꼭 필요한 질문만 **4개씩 묶어** 묻습니다(전체 20개 풀에서 8~16개로 가지치기, "잘 모르겠어요" 항상 제공).
+2. 한 문장에서 **추론 가능한 건 먼저 추정**하고, 답할 수 없는 핵심(성공기준·종료조건)만 **4개씩 묶어** 묻습니다(보통 4~8개, "잘 모르겠어요" 항상 제공).
 3. 답을 모아 **`goal.json`** 을 만들고, **자체 검증**을 통과해야만 `ready`로 내보냅니다.
-4. 마지막에 바로 이어 돌릴 명령을 추천합니다:
+4. 마지막에 바로 이어 돌릴 명령을 추천합니다 — **`goal_command` 산문을 복붙하는 형태**입니다:
 
 ```
-✅ goal.json 준비 완료. 바로 자율 루프를 돌리세요:
+✅ goal.json 준비 완료. 아래 줄을 통째로 복사해 Claude Code에 붙여넣으세요:
 
-  /goal @goal.json
+  /goal <goal_command 전문>
 ```
 
-`/goal`은 `goal_command`를 완료조건으로 삼아, 매 턴이 끝날 때마다 충족 여부를 평가하며 자동으로 반복합니다.
+`/goal`은 이 조건을 완료조건으로 삼아, 매 턴이 끝날 때마다 충족 여부를 평가하며 자동으로 반복합니다. (`/goal`은 자연어 조건만 받습니다 — `@goal.json` 같은 파일 문법은 공식 지원이 아니라서, JSON 전문이 아니라 `goal_command` 산문만 넣습니다. goal.json 파일은 기록·재검증·재개용으로 함께 남습니다.)
 
 완성된 결과물 예시는 [`examples/goal.example.json`](./examples/goal.example.json)을 보세요.
 
@@ -110,15 +110,20 @@ python3 scripts/validate_goal.py path/to/goal.json --strict
 
 ```
 LICENSE
-SKILL.md                      # 스킬 워크플로우 (인터뷰 8단계 + Iron Law)
+SKILL.md                      # 스킬 워크플로우 (스코어링→추정→인터뷰→생성→검증 9단계 + Iron Law)
 install.sh                    # 한 줄 설치 스크립트
 assets/goal.schema.json       # 참조용 JSON 스키마
 examples/goal.example.json    # 완성된 goal.json 예시
+evals/
+  evals.json                  # 산출물 품질 테스트 케이스 3종 + 어서션
+  trigger-eval.json           # description 트리거 정확도 평가 쿼리 20개
 references/
   goal-schema.md              # goal.json 필드 정의 + 측정가능성 가이드
-  loop-formats.md             # /goal 공식 계약 + goal_command 작성 템플릿
-  question-pool.md            # 20개 마스터 질문 풀 + 가지치기/조기종료 규칙
-scripts/validate_goal.py      # 하드게이트 검증기 (SSOT)
+  loop-formats.md             # /goal 공식 계약 + 핸드오프 형식 + goal_command 템플릿
+  question-pool.md            # 20개 마스터 질문 풀 + 추정(infer_first)/가지치기/조기종료
+scripts/
+  validate_goal.py            # 하드게이트 검증기 (SSOT)
+  test_validate_goal.py       # 검증기 회귀 테스트 (14 픽스처)
 ```
 
 ---

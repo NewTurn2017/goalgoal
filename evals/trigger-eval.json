@@ -1,0 +1,23 @@
+[
+  {"query": "/goal 돌릴 목표 하나 잡아줘. 아이디어는 '사내 슬랙 봇이 매일 아침 어제 머지된 PR 목록을 요약해주는 거'인데, 완료조건을 어떻게 써야 루프가 안 헛돌지 모르겠어", "should_trigger": true},
+  {"query": "막연한 생각이 하나 있어 — 노션처럼 생긴 마크다운 메모 앱. 이걸 자율 루프한테 시키게 목표로 정리해줘", "should_trigger": true},
+  {"query": "goalgoal", "should_trigger": true},
+  {"query": "내 맥북 정리 자동화하는 거 만들고 싶은데 뭘 만들지부터 정리가 안 돼. goal.json으로 만들어줘", "should_trigger": true},
+  {"query": "아이디어 구체화해줘: 유튜브 자막 긁어서 한국어로 요약하는 파이프라인", "should_trigger": true},
+  {"query": "이거 /goal에 넣고 자율로 돌리고 싶은데 완료조건을 어떻게 써야 평가자가 멈출지 모르겠어. 일단 'CLI 텍스트 어드벤처 게임 만들기'", "should_trigger": true},
+  {"query": "define a goal for the loop — a python script that watches my downloads folder and sorts files by type into subfolders", "should_trigger": true},
+  {"query": "루프 돌릴 목표 만들어줘. 막연하게 '우리 매출 데이터 보는 대시보드' 정도만 생각 중이야", "should_trigger": true},
+  {"query": "turn this fuzzy idea into a verifiable goal i can hand to an autonomous loop: rewrite our onboarding emails to feel more friendly", "should_trigger": true},
+  {"query": "쇼핑몰 하나 만들고 싶은데 너무 막연해서 어디서 시작할지 모르겠어. 목표부터 또렷하게 잡아줘", "should_trigger": true},
+
+  {"query": "/goal CHANGELOG.md에 이번 주 머지된 PR마다 항목이 하나씩 있을 때까지 채운다 — 이 조건 그대로 지금 돌려줘", "should_trigger": false},
+  {"query": "이 함수에서 null 들어오면 터지는 버그 고쳐줘. src/auth/login.ts 42번째 줄 근처야", "should_trigger": false},
+  {"query": "우리 제품 PRD 좀 써줘. 타겟은 중소 카페 사장님이고 재고관리랑 발주 알림 기능 중심으로", "should_trigger": false},
+  {"query": "이 작업을 5분마다 반복 실행하게 스케줄 걸어줘: npm run check 돌리고 실패하면 슬랙으로 알려줘", "should_trigger": false},
+  {"query": "ouroboros로 이 seed 돌려줘, seed.json 이미 작성해놨어", "should_trigger": false},
+  {"query": "새 기능 뭐 만들면 좋을지 같이 브레인스토밍하자. 우리 앱에 소셜 공유 기능 넣을지 고민 중이야", "should_trigger": false},
+  {"query": "이미 목표는 명확해 — auth 디렉토리 테스트 전부 통과시키기. 설명 말고 바로 작업 시작해줘", "should_trigger": false},
+  {"query": "다른 팀원이 작성한 이 README의 '목표 설정 가이드'가 맞게 쓰였는지 리뷰만 해줘", "should_trigger": false},
+  {"query": "내 이번 주 할 일 목록 좀 정리해줘 — 장보기, 세탁기 수리 예약, 헬스장 등록, 부모님 선물", "should_trigger": false},
+  {"query": "이 막연한 분기 매출 csv 좀 분석해서 인사이트 몇 개 뽑아줘. 파일은 sales_q4.csv", "should_trigger": false}
+]

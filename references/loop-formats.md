@@ -4,13 +4,24 @@ goalgoal의 산출물은 **Claude Code의 `/goal` 명령**이 소비한다. `/go
 
 ## `/goal`은 어떻게 동작하는가
 
-- `/goal <조건>` — 인수는 **자연어 완료조건 문자열**이다. JSON 스키마가 아니다.
-- 조건을 설정하면 **즉시 턴이 시작**되고, 조건 자체가 지시문이 된다.
-- **매 턴이 끝날 때마다 별도 평가자(빠른 모델, Haiku 계열)가 조건 충족 여부를 yes/no로 판정**한다. "no"면 Claude가 다음 턴을 또 시작하고, "yes"면 goal이 자동 해제된다.
+- `/goal <조건>` — 인수는 **자연어 완료조건 문자열**이다. JSON 스키마도, 파일 경로도 아니다. (`/goal`은 Claude Code v2.1.139+ 필요)
+- 조건을 설정하면 **즉시 턴이 시작**되고, 조건 자체가 지시문이 된다. 매 턴마다 평가자가 짧은 사유와 함께 yes/no를 돌려준다.
+- **매 턴이 끝날 때마다 별도 평가자(빠른 모델, 기본 Haiku)가 조건 충족 여부를 yes/no로 판정**한다. "no"면 Claude가 다음 턴을 또 시작하고(사유를 다음 턴 가이드로 전달), "yes"면 goal이 자동 해제된다.
 - 세션당 활성 goal은 **1개**. 새 `/goal`은 기존 것을 대체한다.
 - `-p`(비대화) 모드에서도 동작하며 루프를 끝까지 돌린다. `Ctrl+C`로 중단.
 - 별칭: `/goal clear`(= stop/off/reset/none/cancel)로 해제. `/clear`나 세션 종료로도 해제. `--resume`/`--continue` 시 활성 goal은 복원되나 턴 카운트·타이머는 리셋.
-- `disableAllHooks` 환경에선 `/goal` 사용 불가(Stop hook 래퍼이기 때문).
+- `disableAllHooks`·`allowManagedHooksOnly` 환경에선 `/goal` 사용 불가(Stop hook 래퍼이기 때문). 신뢰(trust)된 워크스페이스에서만 동작.
+
+### ⚠️ 핸드오프 형식: `/goal`은 `goal_command` 산문을 직접 받는다
+
+공식 문서(code.claude.com/docs/en/goal)는 **`/goal <자연어 조건>` 한 가지 형태만** 규정한다. `@goal.json` 같은 **파일 참조 문법은 문서에 없다.** 설령 `@goal.json`이 파일을 인라인하더라도, 그러면 평가자(Haiku)가 **JSON 전문**(domain·scale·confidence 같은 운영 메타까지)을 조건으로 읽게 되어 yes/no 판정이 흐려지고, 4,000자 한도가 JSON 전체에 걸린다.
+
+→ **올바른 핸드오프는 `goal_command` 산문 한 덩어리를 `/goal` 뒤에 그대로 붙여넣는 것**이다. 이것이 문서화된 계약과 정확히 일치한다(조건 = Claude 출력으로 증명되는 산문). `goal.json`은 구조화 기록·검증 입력·재개점으로 유지하되, **`/goal`에 투입되는 운영 산출물은 `goal_command` 문자열**이다.
+
+```text
+# 사용자가 복사해 붙여넣는 형태 (스킬이 이 블록을 출력한다)
+/goal <goal_command 전문 — 한 줄/여러 줄 상관없이 그대로>
+```
 
 ## 결정적 제약 3가지 (goal_command 설계의 근거)
 
@@ -24,7 +35,7 @@ goalgoal의 산출물은 **Claude Code의 `/goal` 명령**이 소비한다. `/go
 
 ## goal_command 작성 템플릿
 
-`goal.json`의 `goal_command` 필드(운영 1순위)는 아래 골격을 따른 **산문**이다. `/goal @goal.json`으로 인라인되거나 그대로 복사해 `/goal`에 붙여도 동작해야 한다.
+`goal.json`의 `goal_command` 필드(운영 1순위)는 아래 골격을 따른 **산문**이다. 사용자가 그대로 복사해 `/goal` 뒤에 붙이면 동작해야 한다(위 "핸드오프 형식" 참조). 그래서 `goal_command`는 **다른 필드 없이도 혼자 완결**되어야 한다 — 목표·증명 체크·제약·종료 안전장치가 이 문자열 안에 다 들어간다.
 
 ```
 <측정 가능한 단일 종료상태>가 될 때까지 멈추지 말고 <목표>를 수행한다.
